@@ -42,11 +42,13 @@ export class WhatsAppClient {
 
     // 1. Try to acquire session lock
     console.log('🔒 Attempting to acquire session lock...');
-    const lockAcquired = await sessionManager.waitForLock(30000); // Wait up to 30 seconds
+    // Wait slightly longer than the 2-minute lock expiry to ensure we catch the release
+    const lockAcquired = await sessionManager.waitForLock(150000);
 
     if (!lockAcquired) {
-      console.log('❌ Could not acquire session lock. Another instance is running.');
-      console.log('💡 If you believe this is an error, wait 5 minutes for the lock to expire or manually clear the session_lock table.');
+      console.log('❌ Could not acquire session lock after 2.5 minutes.');
+      console.log('   Another instance is likely stuck or running.');
+      console.log('💡 The updated lock expiry is 2 minutes. This instance will exit and retry.');
       process.exit(1);
       return;
     }
