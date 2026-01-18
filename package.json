@@ -12,6 +12,7 @@
     "clear-auth": "ts-node scripts/clear-auth.ts",
     "clear-lock": "ts-node scripts/clear-lock.ts",
     "check-lock": "ts-node scripts/check-lock.ts",
+    "add-indexes": "ts-node scripts/add-indexes.ts",
     "migrate": "ts-node scripts/run-migration.ts",
     "check-keys": "ts-node scripts/check-api-keys.ts"
   },

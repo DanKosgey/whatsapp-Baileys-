@@ -150,29 +150,33 @@ function hideQRSection() {
 
 // Dashboard
 async function loadDashboard() {
-    try {
-        // Fetch real stats from API
-        const response = await fetch(`${API_BASE}/api/stats`);
-        const stats = await response.json();
+    // Fire both requests in parallel
+    // We don't await the second one so the first one can render immediately if it finishes first
+    // Or more importantly, if one fails or hangs, it doesn't block the other completely
 
-        updateDashboardStats({
-            totalMessages: stats.totalMessages || 0,
-            activeContacts: stats.totalContacts || 0,
-            responseRate: stats.responseRate || 98,
-            avgResponseTime: stats.avgResponseTime || '12s'
+    // 1. Load Stats
+    fetch(`${API_BASE}/api/stats`)
+        .then(response => response.json())
+        .then(stats => {
+            updateDashboardStats({
+                totalMessages: stats.totalMessages || 0,
+                activeContacts: stats.totalContacts || 0,
+                responseRate: stats.responseRate || 98,
+                avgResponseTime: stats.avgResponseTime || '12s'
+            });
+        })
+        .catch(error => {
+            console.error('Failed to load stats:', error);
+            updateDashboardStats({
+                totalMessages: 0,
+                activeContacts: 0,
+                responseRate: 98,
+                avgResponseTime: '12s'
+            });
         });
 
-        loadRecentActivity();
-    } catch (error) {
-        console.error('Failed to load dashboard:', error);
-        // Fallback to zeros on error
-        updateDashboardStats({
-            totalMessages: 0,
-            activeContacts: 0,
-            responseRate: 98,
-            avgResponseTime: '12s'
-        });
-    }
+    // 2. Load Activity (Independently)
+    loadRecentActivity();
 }
 
 function updateDashboardStats(stats) {

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, varchar, integer, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, serial, timestamp, boolean, varchar, integer, jsonb, index } from 'drizzle-orm/pg-core'; // Added index import
 
 // 1. Contacts: The Rolodex with Identity Validation
 export const contacts = pgTable('contacts', {
@@ -21,6 +21,10 @@ export const contacts = pgTable('contacts', {
     // Timestamps
     createdAt: timestamp('created_at').defaultNow(),
     lastSeenAt: timestamp('last_seen_at').defaultNow(),
+}, (table) => {
+    return {
+        phoneIdx: index('phone_idx').on(table.phone), // Optimize lookup by phone
+    };
 });
 
 // 2. Message History: The Memory
@@ -30,6 +34,11 @@ export const messageLogs = pgTable('message_logs', {
     role: varchar('role', { length: 10 }).notNull(), // 'agent' | 'user'
     content: text('content').notNull(),
     createdAt: timestamp('created_at').defaultNow(),
+}, (table) => {
+    return {
+        contactPhoneIdx: index('contact_phone_idx').on(table.contactPhone), // Optimize history lookup
+        createdAtIdx: index('created_at_idx').on(table.createdAt), // Optimize resizing/sorting
+    };
 });
 
 // 3. Auth Credentials: session persistence
