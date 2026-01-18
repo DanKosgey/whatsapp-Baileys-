@@ -26,7 +26,7 @@ interface TestConfig {
 }
 
 const CONFIG: TestConfig = {
-    model: 'gemini-2.0-flash-lite-preview-02-05',
+    model: 'gemini-2.5-flash',
     testPrompt: 'Say "OK" if you can read this.',
     timeout: 10000 // 10 seconds
 };
