@@ -5,25 +5,30 @@ import { eq } from 'drizzle-orm';
 
 export const usePostgresAuthState = async (collectionName: string): Promise<{ state: AuthenticationState, saveCreds: () => Promise<void> }> => {
     const writeData = async (data: any, id: string) => {
-        try {
-            const key = `${collectionName}:${id}`;
-            const value = JSON.stringify(data, BufferJSON.replacer);
+        const MAX_RETRIES = 3;
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                const key = `${collectionName}:${id}`;
+                const value = JSON.stringify(data, BufferJSON.replacer);
 
-            // Upsert logic for Postgres (ON CONFLICT DO UPDATE)
-            // Drizzle doesn't have a simple upsert helper for all drivers yet, so we check first
-            // Or use insert with onConflictDoUpdate if using drizzle-kit specific driver features (we'll keep it simple)
+                const existing = await db.select().from(authCredentials).where(eq(authCredentials.key, key));
 
-            const existing = await db.select().from(authCredentials).where(eq(authCredentials.key, key));
-
-            if (existing.length > 0) {
-                await db.update(authCredentials)
-                    .set({ value })
-                    .where(eq(authCredentials.key, key));
-            } else {
-                await db.insert(authCredentials).values({ key, value });
+                if (existing.length > 0) {
+                    await db.update(authCredentials)
+                        .set({ value })
+                        .where(eq(authCredentials.key, key));
+                } else {
+                    await db.insert(authCredentials).values({ key, value });
+                }
+                return; // Success
+            } catch (error: any) {
+                console.warn(`⚠️ Error writing auth data (Attempt ${attempt}/${MAX_RETRIES}):`, error.message);
+                if (attempt === MAX_RETRIES) {
+                    console.error('❌ Failed to write auth data after retries:', error);
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff-ish
+                }
             }
-        } catch (error) {
-            console.error('Error writing auth data:', error);
         }
     };
 
