@@ -170,10 +170,37 @@ export class WhatsAppClient {
     });
 
     this.sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type !== 'notify') return;
+      // 🔍 DEBUG: Log every raw event to see if Baileys is firing
+      console.log(`📨 Raw Event: ${type}, Count: ${messages.length}`);
+
+      if (type !== 'notify') {
+        console.log('Skipping event (not "notify")');
+        return;
+      }
+
       for (const msg of messages) {
-        if (!msg.key.remoteJid || msg.key.fromMe) continue;
-        await this.handleIncomingMessage(msg);
+        const jid = msg.key.remoteJid;
+        const fromMe = msg.key.fromMe;
+        const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
+        const type = Object.keys(msg.message || {})[0];
+
+        console.log(`🔍 Inspecting Msg: JID=${jid}, Me=${fromMe}, Type=${type}, Text=${text ? `"${text.substring(0, 20)}..."` : 'N/A'}`);
+
+        if (!jid) {
+          console.log('⏩ Skipping: No JID');
+          continue;
+        }
+
+        if (fromMe) {
+          console.log('⏩ Skipping: Sent by Me (Bot)');
+          continue;
+        }
+
+        try {
+          await this.handleIncomingMessage(msg);
+        } catch (err: any) {
+          console.error('❌ Error handling message:', err.message);
+        }
       }
     });
   }
