@@ -25,8 +25,19 @@ export class GoogleCalendarService {
             ? process.env.BOOKING_DAYS.split(',').map(d => parseInt(d.trim()))
             : [1, 2, 3, 4, 5]; // Mon-Fri by default
 
+
         // Path to your service account key file
         const keyFilePath = path.join(process.cwd(), 'service-account.json');
+
+        // Check if file exists
+        const fs = require('fs');
+        if (!fs.existsSync(keyFilePath)) {
+            console.warn('⚠️  service-account.json not found. Calendar features will be disabled.');
+            console.warn('   To enable: Place service-account.json in the project root directory.');
+            // Initialize with a dummy auth that will fail gracefully
+            this.calendar = null;
+            return;
+        }
 
         const auth = new google.auth.GoogleAuth({
             keyFile: keyFilePath,
@@ -37,6 +48,10 @@ export class GoogleCalendarService {
     }
 
     async listEvents(dateSpecifier: string): Promise<string> {
+        if (!this.calendar) {
+            return "Calendar integration not configured. Please contact the owner directly to schedule.";
+        }
+
         try {
             const { timeMin, timeMax } = this.parseDate(dateSpecifier);
 
@@ -101,6 +116,10 @@ export class GoogleCalendarService {
      * @returns Array of available time slots as strings
      */
     async findAvailableSlots(dateSpecifier: string, durationMinutes?: number): Promise<string[]> {
+        if (!this.calendar) {
+            return ['Calendar integration not configured. Please contact the owner directly.'];
+        }
+
         try {
             const duration = durationMinutes || this.minMeetingDuration;
             const { timeMin, timeMax } = this.parseDate(dateSpecifier);
@@ -209,6 +228,13 @@ export class GoogleCalendarService {
         purpose: string;
         customerPhone?: string;
     }): Promise<{ success: boolean; meetLink?: string; eventId?: string; error?: string }> {
+        if (!this.calendar) {
+            return {
+                success: false,
+                error: 'Calendar integration not configured. Please contact the owner directly to schedule.'
+            };
+        }
+
         try {
             // Parse date and time
             const [hours, minutes] = params.time.split(':').map(Number);
