@@ -53,6 +53,21 @@ export class OwnerService {
     }
 
     /**
+     * Normalize a JID to its canonical phone number format
+     * Maps known LIDs to their phone numbers
+     */
+    normalizeJid(jid: string): string {
+        const normalized = jid.replace(/\+/g, '');
+
+        // Map Kosgey's LID to Phone Number
+        if (normalized.includes('128724850720810') || normalized === config.ownerLid) {
+            return this.getOwnerJid();
+        }
+
+        return normalized;
+    }
+
+    /**
      * Get owner's JID for WhatsApp
      */
     getOwnerJid(): string {

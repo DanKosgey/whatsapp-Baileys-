@@ -371,7 +371,12 @@ export class WhatsAppClient {
    * Handles "Local Guard" logic, Contact Creation, and Buffering.
    */
   private async handleIncomingMessage(msg: any) {
-    const remoteJid = msg.key.remoteJid!;
+    let remoteJid = msg.key.remoteJid!;
+
+    // Normalize JID (unifies Desktop/Phone history and logs)
+    // e.g. Maps 128724850720810@lid -> 254745026933@s.whatsapp.net
+    remoteJid = ownerService.normalizeJid(remoteJid);
+
     const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
     const pushName = msg.pushName;
 
