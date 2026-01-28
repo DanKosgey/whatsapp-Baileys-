@@ -100,6 +100,17 @@ export const AI_TOOLS = [
                     properties: {},
                     required: []
                 }
+            },
+            {
+                name: "get_current_time",
+                description: "Get the current date and time. Use this when you need to know what time it is now, or to provide time-aware responses.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        timezone: { type: "STRING", description: "Optional timezone (e.g. 'America/New_York', 'Europe/London'). Defaults to system timezone." }
+                    },
+                    required: []
+                }
             }
         ]
     }
@@ -149,6 +160,41 @@ export async function executeLocalTool(name: string, args: any, context: any) {
 
         case 'get_analytics':
             return { result: await ownerTools.getAnalytics() };
+
+        case 'get_current_time':
+            try {
+                const now = new Date();
+
+                // Priority: 1. Explicit timezone argument, 2. User's profile timezone, 3. System timezone
+                const userTimezone = context?.userProfile?.timezone;
+                const timezone = args.timezone || userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+                console.log(`🕐 Getting time for timezone: ${timezone}${userTimezone ? ' (from user profile)' : ''}`);
+
+                // Format the date and time
+                const options: Intl.DateTimeFormatOptions = {
+                    timeZone: timezone,
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZoneName: 'short'
+                };
+
+                const formattedTime = now.toLocaleString('en-US', options);
+
+                return {
+                    result: `Current time: ${formattedTime}\nTimezone: ${timezone}\nISO: ${now.toISOString()}`
+                };
+            } catch (e) {
+                console.error('Error getting current time:', e);
+                return {
+                    result: `Current time: ${new Date().toLocaleString()}\nTimezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`
+                };
+            }
 
         default:
             return { error: "Tool not found." };

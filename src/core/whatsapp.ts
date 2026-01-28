@@ -525,7 +525,7 @@ export class WhatsAppClient {
       // Execute Tool
       let toolResult;
       try {
-        toolResult = await executeLocalTool(name, args, { contact });
+        toolResult = await executeLocalTool(name, args, { contact, userProfile: currentUserProfile });
       } catch (toolError: any) {
         console.error(`Tool error:`, toolError.message);
         toolResult = { error: "Tool failed: " + toolError.message };
