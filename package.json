@@ -15,7 +15,9 @@
     "check-lock": "ts-node scripts/check-lock.ts",
     "add-indexes": "ts-node scripts/add-indexes.ts",
     "migrate": "ts-node scripts/run-migration.ts",
-    "check-keys": "ts-node scripts/check-api-keys.ts"
+    "check-keys": "ts-node scripts/check-api-keys.ts",
+    "test-scheduling": "ts-node scripts/test-scheduling.ts",
+    "test-booking": "ts-node scripts/test-booking-e2e.ts"
   },
   "engines": {
     "node": ">=20.0.0"

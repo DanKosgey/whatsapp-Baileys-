@@ -114,6 +114,58 @@ export const AI_TOOLS = [
                 }
             },
             {
+                name: "check_availability",
+                description: "Check the owner's calendar for available meeting slots on a specific date. Use this when a customer asks about availability or wants to schedule a meeting.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        date: {
+                            type: "STRING",
+                            description: "Date to check (YYYY-MM-DD, 'today', or 'tomorrow'). Example: '2026-01-29' or 'tomorrow'"
+                        },
+                        duration: {
+                            type: "NUMBER",
+                            description: "Meeting duration in minutes (default: 30). Common values: 10, 15, 30, 60"
+                        }
+                    },
+                    required: ["date"]
+                }
+            },
+            {
+                name: "schedule_meeting",
+                description: "Book a meeting slot on the owner's calendar and generate a Google Meet link. ONLY use this AFTER confirming availability with check_availability and getting customer confirmation.",
+                parameters: {
+                    type: "OBJECT",
+                    properties: {
+                        date: {
+                            type: "STRING",
+                            description: "Meeting date in YYYY-MM-DD format. Example: '2026-01-29'"
+                        },
+                        time: {
+                            type: "STRING",
+                            description: "Start time in HH:MM format (24-hour). Example: '14:30' for 2:30 PM"
+                        },
+                        duration: {
+                            type: "NUMBER",
+                            description: "Meeting duration in minutes. Example: 30"
+                        },
+                        customer_name: {
+                            type: "STRING",
+                            description: "Customer's full name"
+                        },
+                        customer_email: {
+                            type: "STRING",
+                            description: "Customer's email address (optional, but recommended for calendar invites)"
+                        },
+                        purpose: {
+                            type: "STRING",
+                            description: "Brief description of the meeting purpose. Example: 'Product demo' or 'Consultation call'"
+                        }
+                    },
+                    required: ["date", "time", "duration", "customer_name", "purpose"]
+                }
+            },
+            {
                 name: "browse_url",
                 description: "Fetch and extract content from a website URL. ONLY use this when the user explicitly requests information that requires browsing external websites (e.g., 'check the news', 'what is the price of X'). Do NOT use for general knowledge queries the AI can answer itself.",
                 parameters: {
@@ -197,6 +249,55 @@ export async function executeLocalTool(name: string, args: any, context: any) {
 
         case 'get_analytics':
             return { result: await ownerTools.getAnalytics() };
+
+        case 'check_availability':
+            try {
+                const { date, duration } = args;
+                console.log(`📅 Checking availability for ${date} (${duration || 'default'} min)`);
+                const slots = await googleCalendar.findAvailableSlots(date, duration);
+
+                if (slots.length === 0 || slots[0].includes('No')) {
+                    return { result: slots[0] };
+                }
+
+                return {
+                    result: `Available slots for ${date}:\n${slots.slice(0, 10).join(', ')}${slots.length > 10 ? ` (and ${slots.length - 10} more)` : ''}`
+                };
+            } catch (e: any) {
+                console.error('Check availability error:', e);
+                return { error: `Failed to check availability: ${e.message}` };
+            }
+
+        case 'schedule_meeting':
+            try {
+                const { date, time, duration, customer_name, customer_email, purpose } = args;
+
+                // Get customer phone from context if available
+                const customerPhone = context?.contact?.phone;
+
+                console.log(`📅 Scheduling meeting for ${customer_name} on ${date} at ${time}`);
+
+                const result = await googleCalendar.createMeeting({
+                    date,
+                    time,
+                    duration,
+                    customerName: customer_name,
+                    customerEmail: customer_email,
+                    purpose,
+                    customerPhone
+                });
+
+                if (result.success) {
+                    return {
+                        result: `✅ Meeting scheduled successfully!\n\nDate: ${date}\nTime: ${time}\nDuration: ${duration} minutes\nGoogle Meet Link: ${result.meetLink}\n\nEvent ID: ${result.eventId}`
+                    };
+                } else {
+                    return { error: `Failed to schedule meeting: ${result.error}` };
+                }
+            } catch (e: any) {
+                console.error('Schedule meeting error:', e);
+                return { error: `Failed to schedule meeting: ${e.message}` };
+            }
 
         case 'get_current_time':
             try {
