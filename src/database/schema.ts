@@ -17,6 +17,7 @@ export const contacts = pgTable('contacts', {
     contextSummary: text('context_summary'), // "John's brother", "Client from Nairobi", etc.
     summary: text('summary'), // AI-generated detailed profile
     trustLevel: integer('trust_level').default(0), // 0-10
+    platform: varchar('platform', { length: 20 }).default('whatsapp'), // 'whatsapp' | 'telegram'
 
     // Timestamps
     createdAt: timestamp('created_at').defaultNow(),
@@ -24,6 +25,7 @@ export const contacts = pgTable('contacts', {
 }, (table) => {
     return {
         phoneIdx: index('phone_idx').on(table.phone), // Optimize lookup by phone
+        platformIdx: index('platform_idx').on(table.platform),
     };
 });
 
@@ -33,11 +35,14 @@ export const messageLogs = pgTable('message_logs', {
     contactPhone: varchar('contact_phone', { length: 50 }).references(() => contacts.phone),
     role: varchar('role', { length: 10 }).notNull(), // 'agent' | 'user'
     content: text('content').notNull(),
+    type: varchar('type', { length: 20 }).default('text'), // 'text' | 'image' | 'voice' | 'document' | 'location'
+    platform: varchar('platform', { length: 20 }).default('whatsapp'), // 'whatsapp' | 'telegram'
     createdAt: timestamp('created_at').defaultNow(),
 }, (table) => {
     return {
         contactPhoneIdx: index('contact_phone_idx').on(table.contactPhone), // Optimize history lookup
         createdAtIdx: index('created_at_idx').on(table.createdAt), // Optimize resizing/sorting
+        platformIdx: index('message_platform_idx').on(table.platform),
     };
 });
 

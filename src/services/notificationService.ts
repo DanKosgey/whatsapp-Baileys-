@@ -7,43 +7,58 @@ import { WASocket } from '@whiskeysockets/baileys';
 import { ownerService } from './ownerService';
 import { formatPhoneNumber } from '../utils/phoneFormatter';
 
+import TelegramBot from 'node-telegram-bot-api';
+import { config } from '../config/env';
+
 export class NotificationService {
     private sock: WASocket | undefined;
+    private telegramBot: TelegramBot | undefined;
 
     /**
-     * Initialize with WhatsApp socket
+     * Initialize with WhatsApp socket and optionally Telegram
      */
     init(sock: WASocket) {
         this.sock = sock;
+
+        if (config.telegramBotToken) {
+            this.telegramBot = new TelegramBot(config.telegramBotToken, { polling: false });
+        }
     }
 
     /**
-     * Send notification to owner
+     * Send notification to owner (WhatsApp + Telegram)
      */
     async notifyOwner(message: string): Promise<void> {
-        if (!this.sock) {
-            console.warn('⚠️ NotificationService not initialized');
-            return;
+        const notifications: Promise<void>[] = [];
+
+        // 1. WhatsApp Notification
+        if (this.sock) {
+            const ownerPhone = ownerService.getOwnerPhone();
+            if (ownerPhone) {
+                const normalizedPhone = ownerPhone.replace(/[\+\s]/g, '');
+                const ownerJid = `${normalizedPhone}@s.whatsapp.net`;
+                notifications.push(
+                    this.sock.sendMessage(ownerJid, { text: message })
+                        .then(() => console.log(`📨 Notification sent to WhatsApp owner`))
+                        .catch(err => console.error('Failed to send WhatsApp notification:', err))
+                );
+            } else {
+                console.warn('⚠️ NotificationService: WhatsApp owner phone not set. Skipping WhatsApp notification.');
+            }
         }
 
-        const ownerPhone = ownerService.getOwnerPhone();
-        if (!ownerPhone) {
-            console.warn('⚠️ OWNER_PHONE_NUMBER not set - cannot send notification');
-            return;
+        // 2. Telegram Notification
+        if (this.telegramBot && config.telegramChatId) {
+            notifications.push(
+                this.telegramBot.sendMessage(config.telegramChatId, message)
+                    .then(() => console.log(`📨 Notification sent to Telegram owner`))
+                    .catch(err => console.error('Failed to send Telegram notification:', err))
+            );
+        } else if (this.telegramBot && !config.telegramChatId) {
+            console.warn('⚠️ NotificationService: Telegram Chat ID not set. Skipping Telegram notification.');
         }
 
-        // Normalize phone number (remove +)
-        const normalizedPhone = ownerPhone.replace(/[\+\s]/g, '');
-
-        // WhatsApp JID format
-        const ownerJid = `${normalizedPhone}@s.whatsapp.net`;
-
-        try {
-            await this.sock.sendMessage(ownerJid, { text: message });
-            console.log(`📨 Notification sent to owner: "${message.substring(0, 50)}..."`);
-        } catch (error) {
-            console.error('Failed to send notification to owner:', error);
-        }
+        await Promise.allSettled(notifications);
     }
 
     /**

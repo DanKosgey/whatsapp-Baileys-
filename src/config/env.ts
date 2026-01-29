@@ -32,5 +32,7 @@ export const config = {
     geminiKeys: getGeminiKeys(),                // The full pool
     geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     databaseUrl: process.env.DATABASE_URL,
+    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+    telegramChatId: process.env.TELEGRAM_CHAT_ID,
     nodeEnv: process.env.NODE_ENV || 'development'
 };

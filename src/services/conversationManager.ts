@@ -2,14 +2,14 @@ import { db } from '../database';
 import { conversations, messageLogs, contacts } from '../database/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { geminiService } from './ai/gemini';
-import { MessageSender } from '../utils/messageSender';
+// import { MessageSender } from '../utils/messageSender'; // Removing direct dependency if possible or using union
 import { config } from '../config/env';
 
 export class ConversationManager {
     private activeTimers: Map<string, NodeJS.Timeout> = new Map();
     private CONVERSATION_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
 
-    constructor(private messageSender: MessageSender) { }
+    constructor() { } // Removed MessageSender dependency from constructor as it wasn't used
 
     /**
      * Called whenever a message is received or sent.

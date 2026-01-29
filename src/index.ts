@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { config } from './config/env';
 import { WhatsAppClient } from './core/whatsapp';
+import { TelegramClient } from './core/telegram';
 import { db, testConnection } from './database';
 import { contacts, messageLogs, authCredentials, aiProfile, userProfile } from './database/schema';
 import { eq, desc, sql } from 'drizzle-orm';
@@ -15,8 +16,9 @@ app.use(express.json());
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Initialize Client
-const client = new WhatsAppClient();
+// Initialize Clients
+const whatsappClient = new WhatsAppClient();
+const telegramClient = new TelegramClient();
 
 // Health Check Endpoints (for Render)
 app.get('/health', (req, res) => {
@@ -34,7 +36,10 @@ app.get('/ready', async (req, res) => {
 
 // API Endpoints
 app.get('/api/status', (req, res) => {
-    res.json(client.getStatus());
+    res.json({
+        whatsapp: whatsappClient.getStatus(),
+        telegram: { connected: !!config.telegramBotToken }
+    });
 });
 
 app.get('/api/contacts', async (req, res) => {
@@ -178,7 +183,7 @@ app.post('/api/disconnect', async (req, res) => {
         console.log('🔌 Disconnect requested via API');
 
         // 1. Logout from WhatsApp gracefully
-        await client.logout();
+        await whatsappClient.logout();
 
         // 2. Release Session Lock
         await sessionManager.releaseLock();
@@ -419,12 +424,14 @@ const start = async () => {
             console.log(`🌍 API Server running on port ${PORT}`);
         });
 
-        // 2. Initialize WhatsApp Client (Async)
-        console.log('🔌 Initializing WhatsApp Client in background...');
-        client.initialize().catch(err => {
+        // 2. Initialize Clients (Async)
+        console.log('🔌 Initializing Clients in background...');
+        whatsappClient.initialize().catch(err => {
             console.error('❌ Failed to initialize WhatsApp Client:', err);
-            // Don't exit process immediately, allow retry logic within initialize to work
-            // or let the server stay up for diagnostics
+        });
+
+        telegramClient.initialize().catch(err => {
+            console.error('❌ Failed to initialize Telegram Client:', err);
         });
 
         // 3. Start Background Worker for Queue Processing
@@ -453,9 +460,10 @@ const start = async () => {
                 await sessionManager.releaseLock();
                 console.log('✅ Session lock released');
 
-                // Gracefully shutdown queue system and WhatsApp connection
-                console.log('👋 Shutting down client and queues...');
-                await client.shutdown();
+                // Gracefully shutdown queue system and clients
+                console.log('👋 Shutting down clients and queues...');
+                await whatsappClient.shutdown();
+                await telegramClient.shutdown();
 
                 process.exit(0);
             } catch (error) {

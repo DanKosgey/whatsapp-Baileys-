@@ -178,7 +178,11 @@ export class WhatsAppClient {
           console.log('❌ Session logged out or invalid (401).');
           console.log('💡 Clearing auth credentials to allow re-scan...');
           // Import authCredentials in the file header first, but assuming it is available or I will fix the import
-          await db.delete(authCredentials);
+          try {
+            await db.delete(authCredentials);
+          } catch (deleteError) {
+            console.warn('⚠️ Failed to clear auth credentials (table might not exist):', deleteError);
+          }
           await sessionManager.releaseLock();
           console.log('✅ Credentials cleared. Exiting to restart...');
           process.exit(1);
@@ -226,7 +230,7 @@ export class WhatsAppClient {
         this.messageSender = new MessageSender(this.sock!);
 
         // Initialize ConversationManager
-        this.conversationManager = new ConversationManager(this.messageSender);
+        this.conversationManager = new ConversationManager();
 
         // Initialize MessageBuffer
         this.messageBuffer = new MessageBuffer((jid, messages) => this.processMessageBatch(jid, messages));
@@ -425,6 +429,7 @@ export class WhatsAppClient {
           name: IdentityValidator.extractDisplayName(pushName) || 'Unknown',
           summary: 'New contact. Interaction started.',
           trustLevel: 0,
+          platform: 'whatsapp',
           isVerified: false
         }).returning();
       });
@@ -459,13 +464,13 @@ export class WhatsAppClient {
     const isOwner = ownerService.isOwner(remoteJid);
 
     // 0. Short Circuit: Ignore simple acks (UNLESS it's the owner, who might be commanding)
-    if (!isOwner) {
-      const ignoredPatterns = /^(ok|okay|k|lol|lmao|haha|thanks|thx|cool|👍|✅|yes|no|yeah|yup|nope)\.?$/i;
-      if (ignoredPatterns.test(fullText.trim())) {
-        console.log(`⏩ Short-circuit: Ignoring non-actionable message: "${fullText}"`);
-        return;
-      }
-    }
+    // if (!isOwner) {
+    //   const ignoredPatterns = /^(ok|okay|k|lol|lmao|haha|thanks|thx|cool|👍|✅|yes|no|yeah|yup|nope)\.?$/i;
+    //   if (ignoredPatterns.test(fullText.trim())) {
+    //     console.log(`⏩ Short-circuit: Ignoring non-actionable message: "${fullText}"`);
+    //     return;
+    //   }
+    // }
 
     console.log(`🤖 AI Processing Batch for ${remoteJid} (Owner: ${isOwner}): "${fullText}"`);
 
@@ -489,25 +494,10 @@ export class WhatsAppClient {
     let systemPrompt: string | undefined = undefined;
 
     if (!contact.isVerified && !isOwner) {
-      const extractedName = IdentityValidator.extractNameFromMessage(fullText);
-      if (extractedName) {
-        console.log(`✅ Identity Discovered: ${extractedName}`);
-        await withRetry(async () => {
-          await db.update(contacts).set({
-            confirmedName: extractedName,
-            name: extractedName,
-            isVerified: true,
-            summary: `${contact.summary || ''}\n[Identity Confirmed: ${extractedName}]`
-          }).where(eq(contacts.phone, remoteJid));
-        });
-        contact.name = extractedName;
-        contact.isVerified = true;
-      } else {
-        const currentName = contact.confirmedName || contact.originalPushname;
-        if (!IdentityValidator.isValidName(currentName)) {
-          systemPrompt = IdentityValidator.getIdentityPrompt(currentName);
-        }
-      }
+      // Force AI to verify identity
+      const currentName = contact.name || contact.originalPushname || 'Unknown';
+      systemPrompt = IdentityValidator.getIdentityPrompt(currentName);
+      console.log(`🔒 Identity Verification Mode Active for ${remoteJid}`);
     }
 
     // 4. Load History
@@ -526,7 +516,9 @@ export class WhatsAppClient {
       await db.insert(messageLogs).values({
         contactPhone: remoteJid,
         role: 'user',
-        content: fullText
+        content: fullText,
+        type: 'text',
+        platform: 'whatsapp'
       });
     });
 
@@ -687,7 +679,9 @@ export class WhatsAppClient {
       await db.insert(messageLogs).values({
         contactPhone: remoteJid,
         role: 'agent',
-        content: finalResponse
+        content: finalResponse,
+        type: 'text',
+        platform: 'whatsapp'
       });
     });
 

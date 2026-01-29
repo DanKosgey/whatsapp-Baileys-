@@ -110,26 +110,13 @@ After they provide their name, acknowledge it warmly and continue the conversati
      * Check if a message contains identity information
      * Returns extracted name if found, null otherwise
      */
+    /**
+     * Check if a message contains identity information
+     * Returns extracted name if found, null otherwise
+     */
     static extractNameFromMessage(message: string): string | null {
-        const lowerMsg = message.toLowerCase();
-
-        // Patterns like "I'm John", "My name is Sarah", "This is Mike"
-        const patterns = [
-            /(?:i'?m|i am|name'?s|name is|this is|it'?s)\s+([a-z]{2,}(?:\s+[a-z]{2,})?)/i,
-            /^([a-z]{2,}(?:\s+[a-z]{2,})?)\s+(?:here|from|speaking)/i,
-        ];
-
-        for (const pattern of patterns) {
-            const match = message.match(pattern);
-            if (match && match[1]) {
-                const extractedName = match[1].trim();
-                // Validate the extracted name
-                if (this.isValidName(extractedName)) {
-                    return extractedName;
-                }
-            }
-        }
-
+        // Disabled automatic extraction to prevent capturing phrases like "I am interested" as names.
+        // We will rely on the AI agent to explicitly verify and update the contact name.
         return null;
     }
 }

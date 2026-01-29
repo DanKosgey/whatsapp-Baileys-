@@ -37,6 +37,7 @@
     "@neondatabase/serverless": "^0.6.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/node-telegram-bot-api": "^0.64.13",
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "axios": "^1.13.4",
     "cheerio": "^1.2.0",
@@ -46,6 +47,7 @@
     "express": "^5.2.1",
     "googleapis": "^170.1.0",
     "node-cron": "^4.2.1",
+    "node-telegram-bot-api": "^0.67.0",
     "pino": "^8.17.2",
     "qrcode-terminal": "^0.12.0",
     "typescript": "^5.3.3"
