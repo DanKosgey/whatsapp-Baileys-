@@ -399,17 +399,23 @@ async function selectChat(phone) {
                 const backBtn = document.createElement('button');
                 backBtn.className = 'mobile-back-btn';
                 backBtn.innerHTML = `
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
                     </svg>
                 `;
+                // Use theme variables for colors
                 backBtn.style.background = 'transparent';
                 backBtn.style.border = 'none';
-                backBtn.style.color = 'white';
-                backBtn.style.marginRight = '1rem';
+                backBtn.style.color = 'var(--text-primary)'; // Changed from 'white' to theme variable
+                backBtn.style.marginRight = '0.5rem';
                 backBtn.style.cursor = 'pointer';
                 backBtn.style.display = 'flex';
-                backBtn.style.padding = '0';
+                backBtn.style.padding = '8px';
+                backBtn.style.borderRadius = '50%';
+
+                // Add hover effect via inline style or class
+                backBtn.onmouseover = () => backBtn.style.background = 'rgba(128, 128, 128, 0.1)';
+                backBtn.onmouseout = () => backBtn.style.background = 'transparent';
 
                 backBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -417,6 +423,44 @@ async function selectChat(phone) {
                 };
 
                 header.insertBefore(backBtn, header.firstChild);
+            }
+        } else {
+            // Desktop: Add a close button
+            const header = chatDetail.querySelector('.chat-messages-header');
+            if (header && !header.querySelector('.desktop-close-btn')) {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'desktop-close-btn';
+                closeBtn.innerHTML = `
+                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                         <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                     </svg>
+                 `;
+
+                closeBtn.style.marginLeft = 'auto'; // Push to right
+                closeBtn.style.background = 'transparent';
+                closeBtn.style.border = 'none';
+                closeBtn.style.color = 'var(--text-secondary)';
+                closeBtn.style.cursor = 'pointer';
+                closeBtn.style.padding = '8px';
+                closeBtn.style.borderRadius = '50%';
+                closeBtn.style.display = 'flex';
+
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    // Reset to empty state
+                    chatDetail.innerHTML = `
+                        <div class="chat-detail-empty">
+                            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                                <circle cx="40" cy="40" r="40" fill="#f3f4f6"/>
+                                <path d="M30 35h20M30 45h14" stroke="#9ca3af" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            <h3>Select a conversation</h3>
+                            <p>Choose a chat from the list to view messages</p>
+                        </div>
+                     `;
+                };
+
+                header.appendChild(closeBtn);
             }
         }
     } catch (error) {
@@ -554,8 +598,31 @@ function initializeSettings() {
 
 // Refresh
 function initializeRefresh() {
-    document.getElementById('refresh-btn').addEventListener('click', () => {
-        loadPageData(currentPage);
+    // Dashboard (Main) Refresh
+    document.getElementById('refresh-btn')?.addEventListener('click', () => {
+        const btn = document.getElementById('refresh-btn');
+        btn.style.transition = 'transform 0.5s ease';
+        btn.style.transform = 'rotate(180deg)';
+        loadPageData('dashboard');
+        setTimeout(() => btn.style.transform = 'none', 500);
+    });
+
+    // Chats Refresh
+    document.getElementById('refresh-chats-btn')?.addEventListener('click', () => {
+        const btn = document.getElementById('refresh-chats-btn');
+        btn.style.transition = 'transform 0.5s ease';
+        btn.style.transform = 'rotate(180deg)';
+        loadChats();
+        setTimeout(() => btn.style.transform = 'none', 500);
+    });
+
+    // Contacts Refresh
+    document.getElementById('refresh-contacts-btn')?.addEventListener('click', () => {
+        const btn = document.getElementById('refresh-contacts-btn');
+        btn.style.transition = 'transform 0.5s ease';
+        btn.style.transform = 'rotate(180deg)';
+        loadContacts();
+        setTimeout(() => btn.style.transform = 'none', 500);
     });
 }
 
