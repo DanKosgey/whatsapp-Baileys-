@@ -1,8 +1,11 @@
 
 import cron, { ScheduledTask } from 'node-cron';
+import { eq } from 'drizzle-orm';
 import { WhatsAppClient } from '../core/whatsapp';
 import { ownerService } from './ownerService';
 import { getDailySummary } from './ai/ownerTools';
+import { db } from '../database';
+import { userProfile } from '../database/schema';
 
 export class SchedulerService {
     private client: WhatsAppClient | undefined;
@@ -13,28 +16,58 @@ export class SchedulerService {
         this.start();
     }
 
-    start() {
+    async start() {
         // Stop existing tasks to prevent duplicates
         this.stop();
 
         console.log('⏰ Starting Scheduler Service...');
+
+        // Fetch owner's timezone
+        let timezone = 'UTC'; // Default fallback
+        try {
+            const ownerPhone = ownerService.getOwnerPhone();
+            if (ownerPhone) {
+                // Try to find profile by phone
+                const profiles = await db.select().from(userProfile).where(eq(userProfile.phone, ownerPhone)).limit(1);
+                if (profiles.length > 0 && profiles[0].timezone) {
+                    timezone = profiles[0].timezone;
+                    console.log(`🌍 Scheduler using owner's timezone: ${timezone}`);
+                } else {
+                    // Fallback: try to find ANY profile with a timezone (assuming single user mode)
+                    const anyProfile = await db.select().from(userProfile).limit(1);
+                    if (anyProfile.length > 0 && anyProfile[0].timezone) {
+                        timezone = anyProfile[0].timezone;
+                        console.log(`🌍 Scheduler using generic profile timezone: ${timezone}`);
+                    } else {
+                        console.log('⚠️ No timezone found in user profile, defaulting to system time/UTC.');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error fetching timezone:', error);
+        }
+
+        const cronOptions = {
+            scheduled: true,
+            timezone: timezone
+        };
 
         // 1. Morning Motivation (7:00 AM)
         // Cron format: Minute Hour Day Month DayOfWeek
         const morningTask = cron.schedule('0 7 * * *', async () => {
             console.log('🌅 Running morning motivation task...');
             await this.sendMorningMotivation();
-        });
+        }, cronOptions);
         this.tasks.push(morningTask);
 
         // 2. Evening Summary (9:00 PM)
         const eveningTask = cron.schedule('0 21 * * *', async () => {
             console.log('🌙 Running evening summary task...');
             await this.sendEveningSummary();
-        });
+        }, cronOptions);
         this.tasks.push(eveningTask);
 
-        console.log(`✅ Scheduler initialized with ${this.tasks.length} jobs: Morning (7am), Evening (9pm)`);
+        console.log(`✅ Scheduler initialized with ${this.tasks.length} jobs: Morning (7am), Evening (9pm) in ${timezone}`);
     }
 
     stop() {
