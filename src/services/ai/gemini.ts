@@ -265,13 +265,17 @@ export class GeminiService {
   ): string {
     let systemPrompt: string;
 
-    // Priority 1: Custom prompt override
+    // Priority 1: Custom prompt override (e.g. Identity Guard)
     if (customPrompt) {
       systemPrompt = customPrompt;
+      // Ensure specific instructions don't lose context of who we are talking to if valid
+      if (userContext) systemPrompt += `\n\nCONTEXT:\n${userContext}`;
     }
-    // Priority 2: AI profile hardcoded system prompt
+    // Priority 2: AI profile hardcoded system prompt (from UI Settings)
     else if (aiProfile?.systemPrompt) {
       systemPrompt = aiProfile.systemPrompt;
+      // CRITICAL FIX: Append contact context so AI knows who it's talking to
+      if (userContext) systemPrompt += `\n\nCONTEXT ABOUT THIS CONTACT:\n${userContext}`;
     }
     // Priority 3: Construct from AI profile components
     else if (aiProfile) {
