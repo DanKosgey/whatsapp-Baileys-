@@ -23,7 +23,7 @@ export const AI_TOOLS = [
                         summary_addition: { type: "STRING", description: "New critical info to append to their bio (e.g. 'Is a lawyer', 'Birthday Oct 5')." },
                         trust_level: { type: "NUMBER", description: "New trust level (0-10) if changed." }
                     },
-                    required: ["summary_addition"]
+                    required: []
                 }
             },
             {
@@ -211,7 +211,40 @@ export async function executeLocalTool(name: string, args: any, context: any) {
 
     switch (name) {
         case 'update_contact_info':
-            return { result: "Contact info updated. You can confirm this to the user." };
+            try {
+                const { name, summary_addition, trust_level } = args;
+                const phone = context?.contact?.phone;
+
+                if (!phone) return { error: "No contact found in context." };
+
+                const updateData: any = {};
+                if (name) {
+                    updateData.name = name;
+                    updateData.confirmedName = name; // Also update confirmedName
+                    updateData.isVerified = true; // Mark as verified!
+                }
+                if (trust_level !== undefined) updateData.trustLevel = trust_level;
+
+                // Append to summary if provided
+                if (summary_addition) {
+                    const currentSummary = context?.contact?.summary || '';
+                    updateData.summary = `${currentSummary}\n- ${summary_addition}`.trim();
+                }
+
+                if (Object.keys(updateData).length === 0) {
+                    return { result: "No changes requested." };
+                }
+
+                await db.update(contacts)
+                    .set(updateData)
+                    .where(eq(contacts.phone, phone));
+
+                console.log(`✅ Updated contact info for ${phone}:`, updateData);
+                return { result: "Contact info updated successfully in database." };
+            } catch (e: any) {
+                console.error("Failed to update contact:", e);
+                return { error: "Database update failed: " + e.message };
+            }
 
         case 'check_schedule':
             return await googleCalendar.listEvents(args.day || 'today');

@@ -147,11 +147,11 @@ async function checkStatus() {
         const response = await fetch(`${API_BASE}/api/status`);
         const data = await response.json();
 
-        updateConnectionStatus(data.status, data.qr);
+        updateConnectionStatus(data.whatsapp.status, data.whatsapp.qr);
 
         // If status changed, reload current page
-        if (data.status !== connectionStatus) {
-            connectionStatus = data.status;
+        if (data.whatsapp.status !== connectionStatus) {
+            connectionStatus = data.whatsapp.status;
             loadPageData(currentPage);
         }
     } catch (error) {
